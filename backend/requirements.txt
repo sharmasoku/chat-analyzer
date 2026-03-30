@@ -7,3 +7,6 @@ emoji
 plotly
 matplotlib
 seaborn
+nltk
+python-multipart
+uvicorn

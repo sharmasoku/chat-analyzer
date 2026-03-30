@@ -6,6 +6,9 @@ import numpy as np
 import emoji
 import re
 
+import nltk
+nltk.download('vader_lexicon', quiet=True)
+
 # VADER Sentiment Analyzer (initialized once at module level)
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 _sia = SentimentIntensityAnalyzer()
