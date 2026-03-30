@@ -1,0 +1,23 @@
+[project]
+name = "whatsapp-char-analyzer"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "emoji>=2.15.0",
+    "fastapi>=0.135.2",
+    "google-genai>=1.68.0",
+    "matplotlib>=3.10.8",
+    "nltk>=3.9.4",
+    "numpy>=2.4.3",
+    "pandas>=2.3.3",
+    "plotly>=6.6.0",
+    "pydantic>=2.12.5",
+    "reportlab>=4.4.10",
+    "seaborn>=0.13.2",
+    "streamlit>=1.55.0",
+    "urlextract>=1.9.0",
+    "uvicorn>=0.42.0",
+    "wordcloud>=1.9.6",
+]
