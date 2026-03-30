@@ -10,3 +10,4 @@ seaborn
 nltk
 python-multipart
 uvicorn
+fastapi
