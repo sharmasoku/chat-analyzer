@@ -14,7 +14,7 @@ import BorderGlow from './BorderGlow';
 import ChatPanel from './ChatPanel';
 import analyzerLogo from './assets/analyzer_logo.png';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
 const COLORS = ['#3b82f6', '#0ea5e9', '#10b981', '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#facc15'];
 
