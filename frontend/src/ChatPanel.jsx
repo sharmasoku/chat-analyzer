@@ -76,7 +76,7 @@ export default function ChatPanel({ sessionId, selectedUser }) {
   const [messages, setMessages] = useState([
     {
       role: 'ai',
-      text: "Hey! 👋 I'm your AI Chat Analyst, powered by Google Gemini. Ask me anything about your WhatsApp data — who's most active, busiest hours, common topics, and more!",
+      text: "System initialized. ✨ I am Nexus Intelligence. I can extract context, identify active periods, deduce core topics, and analyze behavioral patterns from your data. What shall we explore today?",
     }
   ]);
   const [input, setInput] = useState('');
@@ -146,8 +146,7 @@ export default function ChatPanel({ sessionId, selectedUser }) {
             whileTap={{ scale: 0.9 }}
             title="Ask AI about your chat"
           >
-            <Sparkles size={26} />
-            <span className="chat-fab-badge">AI</span>
+            <Bot size={28} />
           </motion.button>
         )}
       </AnimatePresence>
@@ -169,11 +168,11 @@ export default function ChatPanel({ sessionId, selectedUser }) {
                   <Bot size={22} />
                 </div>
                 <div>
-                  <h3>AI Chat Analyst</h3>
+                  <h3 style={{ textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.85rem' }}>Nexus Intelligence</h3>
                   <span className="chat-header-status">
                     <span className="status-dot"></span>
-                    Powered by Gemini
-                  </span>  
+                    System Online
+                  </span>
                 </div>
               </div>
               <button className="chat-close-btn" onClick={() => setIsOpen(false)}>

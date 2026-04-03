@@ -10,13 +10,31 @@ from reportlab.lib.units import inch, mm
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    PageBreak, HRFlowable
+    PageBreak, HRFlowable, Image
 )
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+plt.style.use('default')
+sns.set_theme(style="whitegrid", palette="muted")
 from reportlab.graphics.shapes import Drawing, Rect, String
 from reportlab.graphics.charts.piecharts import Pie
 from reportlab.graphics.charts.barcharts import VerticalBarChart
 from datetime import datetime
 from . import analyzer as helper
+
+
+def _plot_to_image(fig, width=5.5*inch, height=4*inch):
+    """Convert matplotlib fig to reportlab Image"""
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', bbox_inches='tight', dpi=300)
+    plt.close(fig)
+    buf.seek(0)
+    img = Image(buf)
+    img._restrictSize(width, height)
+    return img
 
 
 def _make_color(hex_str):
@@ -142,6 +160,31 @@ def generate_pdf(df, selected_user='Overall'):
     elements.append(stats_table)
     elements.append(Spacer(1, 20))
 
+    # --- MONTHLY TIMELINE GRAPH ---
+    monthly_timeline = helper.monthly_analysis(selected_user, df)
+    if not monthly_timeline.empty:
+        elements.append(Paragraph("📅 Monthly Activity Timeline", section_style))
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(monthly_timeline['time'], monthly_timeline['message'], color='#3b82f6', linewidth=2, marker='o')
+        ax.set_xticks(range(len(monthly_timeline['time'])))
+        ax.set_xticklabels(monthly_timeline['time'], rotation=45, ha='right', fontsize=8)
+        ax.set_ylabel("Messages")
+        sns.despine()
+        elements.append(_plot_to_image(fig, width=6.5*inch, height=3.5*inch))
+        elements.append(Spacer(1, 20))
+
+    # --- DAILY TIMELINE GRAPH ---
+    daily_timeline = helper.daily_analysis(selected_user, df)
+    if not daily_timeline.empty:
+        elements.append(Paragraph("🗓️ Daily Activity Timeline", section_style))
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(daily_timeline['only_date'], daily_timeline['message'], color='#10b981', linewidth=1)
+        fig.autofmt_xdate()
+        ax.set_ylabel("Messages")
+        sns.despine()
+        elements.append(_plot_to_image(fig, width=6.5*inch, height=3.5*inch))
+        elements.append(Spacer(1, 20))
+
     # ═══════════ SENTIMENT ANALYSIS ═══════════
     elements.append(Paragraph("💬 Sentiment Analysis", section_style))
     sentiment_data = helper.sentiment_analysis(selected_user, df)
@@ -236,6 +279,43 @@ def generate_pdf(df, selected_user='Overall'):
         elements.append(noe_table)
     elements.append(Spacer(1, 20))
 
+    # --- WEEKLY ACTIVITY (MOST ACTIVE DAYS) ---
+    busy_day = helper.week_activity_chart(selected_user, df)
+    if not busy_day.empty:
+        elements.append(Paragraph("📊 Most Active Days", section_style))
+        fig, ax = plt.subplots(figsize=(6, 4))
+        sns.barplot(x=busy_day.index, y=busy_day.values, ax=ax, palette='viridis', hue=busy_day.index, legend=False)
+        ax.set_xticks(range(len(busy_day.index)))
+        ax.set_xticklabels(busy_day.index, rotation=45, ha='right')
+        ax.set_ylabel("Messages")
+        sns.despine()
+        elements.append(_plot_to_image(fig, width=6*inch, height=3.5*inch))
+        elements.append(Spacer(1, 20))
+
+    # --- MONTHLY ACTIVITY (MOST ACTIVE MONTHS) ---
+    busy_month = helper.month_activity_chart(selected_user, df)
+    if not busy_month.empty:
+        elements.append(Paragraph("📈 Most Active Months", section_style))
+        fig, ax = plt.subplots(figsize=(6, 4))
+        sns.barplot(x=busy_month.index, y=busy_month.values, ax=ax, palette='plasma', hue=busy_month.index, legend=False)
+        ax.set_xticks(range(len(busy_month.index)))
+        ax.set_xticklabels(busy_month.index, rotation=45, ha='right')
+        ax.set_ylabel("Messages")
+        sns.despine()
+        elements.append(_plot_to_image(fig, width=6*inch, height=3.5*inch))
+        elements.append(Spacer(1, 20))
+
+    # --- ACTIVITY HEATMAP ---
+    heatmap_data = helper.activity_heatmap(selected_user, df)
+    if not heatmap_data.empty:
+        elements.append(Paragraph("🔥 Weekly Activity Heatmap", section_style))
+        fig, ax = plt.subplots(figsize=(8, 5))
+        sns.heatmap(heatmap_data, ax=ax, cmap='YlGnBu', cbar_kws={'label': 'Messages'})
+        ax.set_xlabel("Time of Day")
+        ax.set_ylabel("Day of Week")
+        elements.append(_plot_to_image(fig, width=6.5*inch, height=4.5*inch))
+        elements.append(Spacer(1, 20))
+
     # ═══════════ AVERAGE MESSAGE LENGTH ═══════════
     elements.append(Paragraph("📏 Average Message Length", section_style))
     aml_data = helper.avg_message_length(selected_user, df)
@@ -309,6 +389,18 @@ def generate_pdf(df, selected_user='Overall'):
         ]))
         elements.append(cw_table)
     elements.append(Spacer(1, 30))
+
+    # --- WORD CLOUD ---
+    try:
+        wc = helper.create_wordcloud(selected_user, df)
+        fig, ax = plt.subplots(figsize=(6, 6))
+        ax.imshow(wc, interpolation='bilinear')
+        ax.axis('off')
+        elements.append(Paragraph("☁️ Word Cloud", section_style))
+        elements.append(_plot_to_image(fig, width=5.5*inch, height=5.5*inch))
+        elements.append(Spacer(1, 20))
+    except (ValueError, TypeError):
+        pass # In case not enough words to construct a word cloud
 
     # ═══════════ FOOTER ═══════════
     elements.append(HRFlowable(width="100%", thickness=1, color=MUTED, spaceAfter=10))

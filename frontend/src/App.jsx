@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UploadCloud, MessageSquare, Users, FileText, Image as ImageIcon, Link, Calendar, BarChart3, Clock, Flame, Activity, Brain, Timer, Moon, Sun, Ruler, Zap, Download } from 'lucide-react';
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LabelList
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LabelList, Brush, Label
 } from 'recharts';
 import './index.css';
 import Shuffle from './Shuffle';
@@ -231,11 +231,17 @@ export default function App() {
 
             {/* 1. TOP STATISTICS */}
             <div className="grid-metrics">
-              <MetricCard icon={<MessageSquare />} label="Total Messages" value={data.top_stats.total_messages} color="#3b82f6" />
-              <MetricCard icon={<FileText />} label="Total Words" value={data.top_stats.total_words} color="#10b981" />
-              <MetricCard icon={<ImageIcon />} label="Media Shared" value={data.top_stats.media_shared} color="#f43f5e" />
-              <MetricCard icon={<Link />} label="Links Shared" value={data.top_stats.links_shared} color="#facc15" />
-              <MetricCard icon={<Calendar />} label="Active Days" value={data.top_stats.active_days} color="#8b5cf6" />
+              <MetricCard icon={<MessageSquare />} label="Total Messages" value={data.top_stats.total_messages} unit="msgs" color="#3b82f6" />
+              <MetricCard icon={<FileText />} label="Total Words" value={data.top_stats.total_words} unit="words" color="#10b981" />
+              <MetricCard icon={<ImageIcon />} label="Media Shared" value={data.top_stats.media_shared} unit="files" color="#f43f5e" />
+              <MetricCard icon={<Link />} label="Links Shared" value={data.top_stats.links_shared} unit="links" color="#facc15" />
+              <MetricCard icon={<Calendar />} label="Active Days" value={data.top_stats.active_days} unit="days" color="#8b5cf6" />
+              {data.activity_streak && (
+                <>
+                  <MetricCard icon={<Zap />} label="Longest Streak" value={data.activity_streak.longest_streak} unit="days" color="#facc15" />
+                  <MetricCard icon={<Flame />} label="Current Streak" value={data.activity_streak.current_streak} unit="days" color="#ec4899" />
+                </>
+              )}
             </div>
 
             {/* 2. MESSAGE TIMELINES (MONTHLY & DAILY) */}
@@ -259,10 +265,14 @@ export default function App() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--primary-border)" />
-                    <XAxis dataKey="time" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                    <XAxis dataKey="time" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} height={40}>
+                      <Label value="Month/Year" position="insideBottom" style={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                    </XAxis>
+                    <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={50}>
+                      <Label value="Messages" angle={-90} position="insideLeft" style={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                    </YAxis>
                     <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }} />
-                    <Area type="monotone" dataKey="message" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorMonthly)" />
+                    <Area type="natural" dataKey="message" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorMonthly)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -278,10 +288,23 @@ export default function App() {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data.timeline.daily}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--primary-border)" />
-                    <XAxis dataKey="only_date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                    <XAxis dataKey="only_date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} height={40}>
+                      <Label value="Date" position="insideBottom" style={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                    </XAxis>
+                    <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={50} />
                     <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }} />
-                    <Line type="bundle" dataKey="message" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+                    <Brush 
+                      dataKey="only_date" 
+                      height={30} 
+                      stroke="#8b5cf6" 
+                      fill="rgba(139, 92, 246, 0.1)" 
+                      tickFormatter={(value) => {
+                        try {
+                          return new Date(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                        } catch(e) { return value; }
+                      }} 
+                    />
+                    <Line type="monotone" dataKey="message" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -324,18 +347,19 @@ export default function App() {
                             data={data.most_active_users.pie}
                             cx="50%"
                             cy="50%"
-                            innerRadius={70}
-                            outerRadius={110}
+                            innerRadius={40}
+                            outerRadius={85}
                             paddingAngle={3}
                             dataKey="percent"
                             nameKey="user"
-                            label={({ name, percent }) => `${name} (${percent}%)`}
+                            label={({ name, percent }) => percent >= 5 ? `${name} (${Math.round(percent)}%)` : ''}
+                            labelLine={true}
                           >
                             {data.most_active_users.pie.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} style={{ outline: 'none' }} />
                             ))}
                           </Pie>
-                          <Tooltip contentStyle={{ borderRadius: '12px', border: 'none' }} formatter={(value) => `${value}%`} />
+                          <Tooltip wrapperStyle={{ zIndex: 1000 }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }} formatter={(value) => `${value}%`} />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
@@ -355,7 +379,7 @@ export default function App() {
                         <XAxis dataKey="user" tick={{ fontSize: 12, fontWeight: 600 }} axisLine={false} tickLine={false} />
                         <YAxis hide />
                         <Tooltip cursor={{ fill: 'var(--bg-main)' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-md)' }} />
-                        <Bar dataKey="count" fill="#ec4899" radius={[6, 6, 0, 0]} barSize={80}>
+                        <Bar dataKey="count" fill="#ec4899" radius={[6, 6, 0, 0]}>
                           <LabelList dataKey="count" position="top" style={{ fontSize: 12, fill: 'var(--text-muted)' }} />
                           {data.first_message.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
@@ -380,10 +404,10 @@ export default function App() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data.activity.weekly}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--primary-border)" />
-                      <XAxis dataKey="day" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                      <XAxis dataKey="day" interval={0} tick={{ fontSize: 11, angle: -35, textAnchor: 'end' }} height={45} axisLine={false} tickLine={false} />
                       <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12 }} width={40} />
                       <Tooltip cursor={{ fill: 'var(--bg-main)' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-md)' }} />
-                      <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
+                      <Bar dataKey="count" fill="#3b82f6" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -395,10 +419,10 @@ export default function App() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data.activity.monthly}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--primary-border)" />
-                      <XAxis dataKey="month" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                      <XAxis dataKey="month" interval={0} tick={{ fontSize: 11, angle: -35, textAnchor: 'end' }} height={45} axisLine={false} tickLine={false} />
                       <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12 }} width={40} />
                       <Tooltip cursor={{ fill: 'var(--bg-main)' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-md)' }} />
-                      <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40} />
+                      <Bar dataKey="count" fill="#10b981" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -409,18 +433,23 @@ export default function App() {
             <div className="card" style={{ marginBottom: '2.5rem' }}>
               <h3 className="title" style={{ marginBottom: '2rem' }}>Weekly Activity Heatmap</h3>
 
-              {/* Time X-Axis header */}
-              <div style={{ display: 'flex', marginLeft: '90px', marginBottom: '0.5rem' }}>
-                {data.activity.heatmap.periods.map((period, i) => (
-                  <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: '10px', color: 'var(--text-muted)', transform: 'rotate(-45deg)' }}>
-                    {period}
+              {/* Heatmap Layout Wrapper */}
+              <div style={{ display: 'flex', gap: '2rem', marginTop: '1.5rem' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  {/* Time X-Axis header */}
+                  <div style={{ display: 'flex', marginLeft: '90px', marginBottom: '0.5rem' }}>
+                    {data.activity.heatmap.periods.map((period, i) => {
+                      const label = period.split('-')[0].trim();
+                      return (
+                        <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', transform: 'rotate(-45deg)', whiteSpace: 'nowrap' }}>
+                          {label}
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
 
-              <div style={{ display: 'flex', gap: '2rem' }}>
-                {/* Heatmap Grid */}
-                <div className="heatmap-wrapper" style={{ flex: 1 }}>
+                  {/* Heatmap Grid */}
+                  <div className="heatmap-wrapper" style={{ width: '100%' }}>
                   {data.activity.heatmap.days.map((day, rowIndex) => (
                     <div key={day} className="heatmap-row" style={{ marginTop: '2px' }}>
                       <div style={{ width: '90px', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center' }}>
@@ -443,6 +472,7 @@ export default function App() {
                       })}
                     </div>
                   ))}
+                  </div>
                 </div>
 
                 {/* Heatmap Legend */}
@@ -488,7 +518,7 @@ export default function App() {
                         tickFormatter={(value) => value.length > 15 ? value.substring(0, 15) + '..' : value}
                       />
                       <Tooltip cursor={{ fill: 'var(--bg-main)' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-md)' }} />
-                      <Bar dataKey="count" fill="#8b5cf6" radius={[0, 4, 4, 0]}>
+                      <Bar dataKey="count" fill="#8b5cf6" radius={[0, 6, 6, 0]}>
                         <LabelList dataKey="count" position="right" style={{ fontSize: 12, fill: 'var(--text-muted)' }} />
                       </Bar>
                     </BarChart>
@@ -572,21 +602,21 @@ export default function App() {
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
-                            data={data.sentiment.breakdown.slice(0, 8)}
+                            data={data.sentiment.breakdown.filter(s => s.percent >= 2.5)}
                             cx="50%"
                             cy="50%"
-                            innerRadius={80}
-                            outerRadius={130}
+                            innerRadius={65}
+                            outerRadius={105}
                             paddingAngle={3}
                             dataKey="count"
                             nameKey="sentiment"
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            label={({ name, percent }) => `${name} (${Math.round(percent)}%)`}
                           >
-                            {data.sentiment.breakdown.slice(0, 8).map((entry, index) => (
-                              <Cell key={`sent-${index}`} fill={COLORS[index % COLORS.length]} />
+                            {data.sentiment.breakdown.filter(s => s.percent >= 2.5).map((entry, index) => (
+                              <Cell key={`sent-${index}`} fill={COLORS[index % COLORS.length]} style={{ outline: 'none' }} />
                             ))}
                           </Pie>
-                          <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }} />
+                          <Tooltip wrapperStyle={{ zIndex: 1000 }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }} />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
@@ -744,52 +774,7 @@ export default function App() {
               </>
             )}
 
-            {/* ═══════════════════════════════════════════════════════
-                13. ACTIVITY STREAK
-            ═══════════════════════════════════════════════════════ */}
-            {data.activity_streak && (
-              <>
-                <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Zap size={28} color="#f43f5e" /> Activity Streak
-                </h2>
-                <div className="card" style={{ marginBottom: '2.5rem' }}>
-                  <div className="streak-cards">
-                    <motion.div
-                      className="streak-card fire"
-                      whileHover={{ scale: 1.03 }}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
-                    >
-                      <div className="streak-value" style={{ color: '#f43f5e' }}>🔥 {data.activity_streak.longest_streak}</div>
-                      <div className="streak-label">Longest Streak (Days)</div>
-                    </motion.div>
-                    <motion.div
-                      className="streak-card"
-                      whileHover={{ scale: 1.03 }}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                      style={{ background: 'linear-gradient(135deg, #eff6ff20, #3b82f620)' }}
-                    >
-                      <div className="streak-value" style={{ color: '#3b82f6' }}>📅 {data.activity_streak.current_streak}</div>
-                      <div className="streak-label">Current Streak (Days)</div>
-                    </motion.div>
-                    <motion.div
-                      className="streak-card"
-                      whileHover={{ scale: 1.03 }}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                      style={{ background: 'linear-gradient(135deg, #ecfdf520, #10b98120)' }}
-                    >
-                      <div className="streak-value" style={{ color: '#10b981' }}>✅ {data.activity_streak.total_active_days}</div>
-                      <div className="streak-label">Total Active Days</div>
-                    </motion.div>
-                  </div>
-                </div>
-              </>
-            )}
+
 
           </motion.div>
         )}
@@ -804,14 +789,14 @@ export default function App() {
 }
 
 // Subcomponent for Metric Cards
-function MetricCard({ icon, label, value, color }) {
+function MetricCard({ icon, label, value, unit, color }) {
   return (
     <motion.div
       whileHover={{ y: -5, scale: 1.02 }}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-      style={{ display: 'flex', flex: 1, height: '100%' }}
+      style={{ display: 'flex', flex: 1, minWidth: 0, height: '100%' }}
     >
       <BorderGlow
         edgeSensitivity={49}
@@ -832,7 +817,7 @@ function MetricCard({ icon, label, value, color }) {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
-            padding: '1.5rem 2rem',
+            padding: '1.25rem 1.25rem',
             borderRadius: '24px',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
@@ -843,15 +828,15 @@ function MetricCard({ icon, label, value, color }) {
           }}
         >
           {/* Dynamic Animated Glow */}
-          <motion.div 
-            animate={{ 
+          <motion.div
+            animate={{
               scale: [1, 1.2, 1],
               opacity: [0.3, 0.6, 0.3]
             }}
-            transition={{ 
-              duration: 4, 
+            transition={{
+              duration: 4,
               repeat: Infinity,
-              ease: "easeInOut" 
+              ease: "easeInOut"
             }}
             style={{
               position: 'absolute',
@@ -864,7 +849,7 @@ function MetricCard({ icon, label, value, color }) {
               filter: 'blur(20px)',
               pointerEvents: 'none',
               zIndex: 0
-            }} 
+            }}
           />
 
           {/* Decorative side accent line */}
@@ -879,20 +864,20 @@ function MetricCard({ icon, label, value, color }) {
             opacity: 0.8
           }} />
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1, gap: '0.5rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <p style={{
-                fontSize: '0.85rem',
+                fontSize: '0.75rem',
                 fontWeight: 700,
                 color: 'var(--text-muted)',
                 textTransform: 'uppercase',
-                letterSpacing: '0.1em',
+                letterSpacing: '0.05em',
                 marginBottom: '0.5rem'
               }}>
                 {label}
               </p>
               <p style={{
-                fontSize: '2.5rem',
+                fontSize: '1.75rem',
                 fontWeight: 800,
                 fontFamily: 'Outfit, sans-serif',
                 lineHeight: '1.1',
@@ -902,20 +887,29 @@ function MetricCard({ icon, label, value, color }) {
                 background: `linear-gradient(135deg, var(--text-main) 0%, ${color} 150%)`,
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: '0.4rem'
               }}>
                 {typeof value === 'number' ? value.toLocaleString() : value}
+                {unit && (
+                  <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'lowercase', WebkitTextFillColor: 'var(--text-muted)' }}>
+                    {unit}
+                  </span>
+                )}
               </p>
             </div>
 
             <div style={{
-              width: 48, 
-              height: 48, 
+              width: 48,
+              height: 48,
+              flexShrink: 0,
               borderRadius: '14px',
               background: `linear-gradient(135deg, ${color}15 0%, ${color}05 100%)`,
               border: `1px solid ${color}30`,
               display: 'flex',
-              alignItems: 'center', 
-              justifyContent: 'center', 
+              alignItems: 'center',
+              justifyContent: 'center',
               color: color,
               boxShadow: `0 4px 12px ${color}15`,
             }}>

@@ -69,11 +69,12 @@ def preprocess(data):
     extracted = df['message'].str.extract(r'^([\w\W]+?):\s(.*)', expand=True)
     
     # Unmatched rows are Group Notifications
-    df['user'] = extracted[0].fillna('Group Notification').str.replace('-', '', regex=False)
+    df['user'] = extracted[0].fillna('Group Notification').str.replace('-', '', regex=False).str.strip()
     df['message'] = extracted[1].fillna(df['message']).str.replace('\n', '', regex=False)
 
-    # Filter out nulls
+    # Filter out nulls and Meta AI bot messages
     df = df[df['message'] != 'null']
+    df = df[df['user'] != 'Meta AI']
 
     # Vectorized Time Difference Calculation
     df['time_diff'] = df['date'].diff()

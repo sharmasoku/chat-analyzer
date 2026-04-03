@@ -172,6 +172,20 @@ def activity_heatmap(selected_user, df):
         df = df[df['user'] == selected_user]
 
     pivot_activity_heatmap = df.pivot_table(index='day_name', columns='period', values='message', aggfunc='count').fillna(0)
+    
+    days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    
+    def to_12h(h):
+        if h == 0: return '12 AM'
+        elif h < 12: return f'{h} AM'
+        elif h == 12: return '12 PM'
+        else: return f'{h - 12} PM'
+        
+    periods_order = [f"{to_12h(h)} - {to_12h((h+1)%24)}" for h in range(24)]
+    
+    # Reindex to force chronological sorting. Reindex adds missing columns as NaN, so fillna again.
+    pivot_activity_heatmap = pivot_activity_heatmap.reindex(index=days_order, columns=periods_order, fill_value=0)
+    
     return pivot_activity_heatmap
 
 
